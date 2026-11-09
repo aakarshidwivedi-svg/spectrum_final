@@ -8,6 +8,9 @@ import { eggPoke } from '../lib/egg'
 import charUrl from '../assets/spectrum-character.png'
 
 const clamp = (v, a, b) => Math.min(b, Math.max(a, v)), lerp = THREE.MathUtils.lerp
+// Camera is at z=9 with a 40deg fov, so the view is 2*9*tan(20deg) = 6.55 units tall at the mascot plane, which is 6.6 units.
+// FIT scales the 3D mesh so it fills the stage exactly like the 2D fallback image does (object-fit: contain), which keeps both the same size.
+const FIT = (2 * 9 * Math.tan(THREE.MathUtils.degToRad(20))) / 6.6
 const modelUrl = `${import.meta.env.BASE_URL}models/spectrum.glb`
 const smooth = (a, b, x) => { const u = clamp((x - a) / (b - a), 0, 1); return u * u * (3 - 2 * u) }
 const spring = (s, target, dt, k, c) => { s.v += (k * (target - s.x) - c * s.v) * dt; s.x = clamp(s.x + s.v * dt, -1.2, 1.2) } // damped spring: follow-through, then settle
@@ -105,6 +108,7 @@ function ImageChar({ S = scene, F = fx }) {
 // Real model path: used automatically when /spectrum.glb exists. Plays its clips and adds spring bones.
 function GLBChar() {
   const { scene: model, animations } = useGLTF(modelUrl)
+  useEffect(() => { document.querySelector('.stage')?.classList.add('gl-ready') }, [])
   const mixer = useMemo(() => new THREE.AnimationMixer(model), [model])
   const fit = useMemo(() => { const b = new THREE.Box3().setFromObject(model), z = b.getSize(new THREE.Vector3()), c = b.getCenter(new THREE.Vector3()); return { s: 5.6 / z.y, c } }, [model])
   const bones = useMemo(() => { const a = []; model.traverse(o => { if (o.isBone && /tail|hair|crest|horn|ear/i.test(o.name)) a.push({ o, bz: o.rotation.z, bx: o.rotation.x, x: 0, z: 0, vx: 0, vz: 0, i: a.length }) }); return a }, [model])
@@ -166,7 +170,7 @@ function Rig({ full, mini, S = scene, F = fx, children }) {
     s.zoom += (s.zt - s.zoom) * k
     F.step(dt); g.current.rotation.set(s.pit, s.yaw, F.cur.rz)
     g.current.position.y = Math.sin(t * 1.3) * .12 + S.scroll * 2 + F.cur.hop
-    g.current.scale.setScalar(Math.min(1, asp * .98) * s.zoom * (1 - S.scroll * .25)); g.current.scale.y *= 1 + F.cur.sq
+    g.current.scale.setScalar(Math.min(1, asp) * FIT * s.zoom * (1 - S.scroll * .25)); g.current.scale.y *= 1 + F.cur.sq
     S.sw = lerp(S.sw, clamp((s.yaw - s.prev) / Math.max(dt, .001), -6, 6), .25); s.prev = s.yaw // body-turn velocity drives secondary motion
   })
   return <group ref={g}>{children}</group>

@@ -8,7 +8,7 @@ const CTX = {
   perspectives: { anim: 'ponder', msg: 'Four ways of seeing. Have a look!' },
   events: { anim: 'happy', msg: 'Auditions are open. Ready to join?' },
   team: { anim: 'greet', amp: .6, msg: 'Meet the people behind the colour.' },
-  join: { anim: 'cheer', msg: 'Come be part of our story!' }, footer: { anim: 'goodbye' },
+  join: { anim: 'cheer', msg: 'Come be part of our story!' }, footer: { anim: 'goodbye', msg: 'Thanks for visiting. See you soon!' },
 }
 const TIPS = ['Want to know what Spectrum is about?', 'Curious about the auditions?', 'Come explore what Spectrum is about!', 'Ready to become part of Spectrum?']
 export default function useMascotEvents() {

@@ -3,15 +3,16 @@ import gsap from 'gsap'
 import { ScrollTrigger } from 'gsap/ScrollTrigger'
 import Lenis from 'lenis'
 import Intro from './components/Intro'
-import { EASE } from './lib/motion'
+import { EASE, DUR } from './lib/motion'
 import Hero from './components/Hero'
 import Sections from './components/Sections'
 import Assistant from './components/assistant/Assistant'
 import useMascotEvents from './hooks/useMascotEvents'
 import CustomCursor from './components/CustomCursor'
 import useMagnetic from './hooks/useMagnetic'
-import { scene, reduced } from './store'
+import { scene, reduced, ui } from './store'
 gsap.registerPlugin(ScrollTrigger)
+ScrollTrigger.config({ ignoreMobileResize: true }) // the mobile address bar showing/hiding must not re-measure the whole page mid-scroll
 export default function App() {
   useMagnetic(); useMascotEvents()
   useEffect(() => {
@@ -30,7 +31,7 @@ export default function App() {
     }
     const onPop = () => { const t = location.hash && document.querySelector(location.hash); lenis ? lenis.scrollTo(t || 0, { offset: t ? -60 : 0 }) : t ? t.scrollIntoView() : scrollTo(0, 0) } // back/forward keep working
     if (!reduced) {
-      lenis = new Lenis({ lerp: .09 })
+      lenis = new Lenis({ lerp: .09 }); ui.lenis = lenis
       lenis.on('scroll', e => { ScrollTrigger.update(); nav && nav.classList.toggle('hide', e.direction === 1 && scrollY > 240) })
       tick = t => lenis.raf(t * 1000); gsap.ticker.add(tick); gsap.ticker.lagSmoothing(0)
     }
@@ -38,14 +39,20 @@ export default function App() {
     if (location.hash) setTimeout(onPop, 150)
     const ctx = gsap.context(() => {
       if (reduced) return
-      gsap.utils.toArray('.reveal').forEach(el => gsap.from(el.children, { y: 50, opacity: 0, duration: 1, stagger: .12, ease: 'power3.out', scrollTrigger: { trigger: el, start: 'top 80%' } }))
-      gsap.from('.band i', { scaleX: 0, transformOrigin: 'left', stagger: .1, duration: 1, ease: 'power3.out', scrollTrigger: { trigger: '.band', start: 'top 85%' } })
-      gsap.utils.toArray('.sec .display.sm').forEach(h => gsap.from(h, { clipPath: 'inset(0 0 100% 0)', duration: 1, ease: EASE.out, clearProps: 'clipPath', scrollTrigger: { trigger: h, start: 'top 85%' } }))
+      // One rhythm for the whole page: same easing, same distance, same stagger, and everything starts as it nears the viewport
+      // (top 85%) so no content waits for the visitor. Each trigger runs once; nothing is scrubbed or pinned, so scrolling stays free.
+      const trig = (trigger, start = 'top 85%') => ({ trigger, start, once: true })
+      gsap.utils.toArray('.reveal').forEach(el => gsap.from(el.children, { y: 40, opacity: 0, duration: DUR.slow, stagger: .1, ease: EASE.out, scrollTrigger: trig(el) }))
+      gsap.from('.band i', { scaleX: 0, transformOrigin: 'left', stagger: .1, duration: DUR.slow, ease: EASE.out, scrollTrigger: trig('.band') })
+      gsap.utils.toArray('.sec .display.sm').forEach(h => gsap.from(h, { clipPath: 'inset(0 0 100% 0)', duration: DUR.slow, ease: EASE.out, clearProps: 'clipPath', scrollTrigger: trig(h) }))
+      gsap.from('.panel', { y: 36, opacity: 0, duration: DUR.slow, stagger: .1, ease: EASE.out, clearProps: 'transform,opacity', scrollTrigger: trig('.panels') }) // Perspectives cards
+      gsap.from('.aud-poster', { clipPath: 'inset(0 0 100% 0)', duration: 1.2, ease: EASE.out, clearProps: 'clipPath', scrollTrigger: trig('.aud-card', 'top 80%') }) // poster unveils top to bottom, never cropped
+      gsap.from('.sf-top > *', { y: 28, opacity: 0, duration: DUR.slow, stagger: .12, ease: EASE.out, clearProps: 'transform,opacity', scrollTrigger: trig('.site-foot', 'top 92%') })
       gsap.to('.marquee div', { xPercent: -50, ease: 'none', repeat: -1, duration: 28 })
       gsap.to('.hero-copy', { yPercent: -10, ease: 'none', scrollTrigger: { trigger: '.hero', start: 'top top', end: 'bottom top', scrub: .6 } })
       document.fonts && document.fonts.ready.then(() => ScrollTrigger.refresh())
     })
-    return () => { removeEventListener('scroll', onScroll); removeEventListener('pointermove', onMove); document.removeEventListener('click', onClick); removeEventListener('popstate', onPop); ctx.revert(); if (lenis) { gsap.ticker.remove(tick); lenis.destroy() } }
+    return () => { removeEventListener('scroll', onScroll); removeEventListener('pointermove', onMove); document.removeEventListener('click', onClick); removeEventListener('popstate', onPop); ctx.revert(); if (lenis) { gsap.ticker.remove(tick); lenis.destroy(); ui.lenis = null } }
   }, [])
   return <><Intro /><CustomCursor /><Assistant /><div className="progress" aria-hidden="true"/><main><Hero /><Sections /></main></>
 }

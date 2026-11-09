@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, lazy, Suspense } from 'react'
+import { useEffect, useLayoutEffect, useRef, useState, lazy, Suspense } from 'react'
 import gsap from 'gsap'
 import { ArrowUpRight } from 'lucide-react'
 import { scene, reduced, hasWebGL, intro } from '../store'
@@ -12,14 +12,16 @@ const hover = v => ({ onPointerEnter: () => (scene.hover = v), onPointerLeave: (
 export default function Hero() {
   const ref = useRef(), [gl] = useState(() => hasWebGL())
   const lowPower = innerWidth < 768 || (navigator.hardwareConcurrency || 8) <= 4
-  useEffect(() => {
+  // Layout effect: the "from" states are applied before the first paint, so nothing flashes at its final state first.
+  useLayoutEffect(() => {
     if (reduced) return
     const ctx = gsap.context(() => {
       const tl = gsap.timeline({ paused: true, defaults: { ease: 'power4.out' } }); intro.done.then(() => tl.play())
       tl
         .from('.hl', { yPercent: 110, duration: 1.2, stagger: .12 })
         .from('.hero-fade', { y: 24, opacity: 0, duration: .9, stagger: .1 }, '-=.7')
-        .from('.stage', { scale: .7, opacity: 0, duration: 1.6 }, 0)
+        // The mascot never changes size: it is laid out at its final dimensions from the first frame and only fades in.
+        .from('.stage', { opacity: 0, duration: .8, ease: 'power2.out' }, 0)
     }, ref)
     return () => ctx.revert()
   }, [])
@@ -28,7 +30,7 @@ export default function Hero() {
       <DotField spacing={innerWidth < 768 ? 20 : 16} />
       <Navbar />
       <div className="stage" data-cursor aria-hidden="true">
-        <img className="char-fallback" src={charImg} alt="Spectrum mascot" />
+        <img className="char-fallback" src={charImg} alt="Spectrum mascot" width="800" height="800" decoding="async" fetchpriority="high" />
         {gl && <Suspense fallback={null}><Hero3D lowPower={lowPower}/></Suspense>}
       </div>
       <div className="hero-copy">
